@@ -29,7 +29,6 @@ frontend-rainguard/                  Vite + React app (create, browse, buy, sett
 tests/direct/test_rain_guard.py      fast VM tests, mocked weather
 tests/integration/test_rain_guard.py on-chain tests, real consensus
 tests/seed_rainguard_live.py         deploy + seed live demo policies
-gltest.config.yaml                   StudioNet accounts (test-only)
 ```
 
 ## Running the tests
@@ -42,7 +41,14 @@ pytest tests/direct/ -q              # 30 tests
 genvm-lint check contracts/rain_guard.py
 ```
 
-The integration suite needs the StudioNet RPC (accounts live in `gltest.config.yaml`):
+The integration suite needs the StudioNet RPC and funded accounts. `gltest.config.yaml` is gitignored; create one locally with your own StudioNet keys:
+
+```yaml
+networks:
+  studionet:
+    accounts:
+      - "<your private key>"
+```
 
 ```bash
 gltest --network studionet tests/integration/test_rain_guard.py -v -s
