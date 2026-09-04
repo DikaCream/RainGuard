@@ -99,6 +99,7 @@ export default function Policies() {
   return (
     <div className="page container">
       <div className="page-head">
+        <span className="kicker">The live board</span>
         <h1>Coverage on the market</h1>
         <p className="muted">
           Insurers fund a payout against a weather trigger; buyers pay the

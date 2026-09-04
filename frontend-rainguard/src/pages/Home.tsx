@@ -4,6 +4,15 @@ import { useRainGuard } from "../context/RainGuardContext";
 import { formatGen } from "../lib/client";
 import type { Stats } from "../lib/types";
 
+const TICKER = [
+  "RAIN",
+  "HEAT",
+  "COVERED",
+  "NO CLAIM FORMS",
+  "PUBLIC DATA",
+  "AUTO-SETTLEMENT",
+];
+
 export default function Home() {
   const { contract } = useRainGuard();
   const [stats, setStats] = useState<Stats | null>(null);
@@ -18,6 +27,8 @@ export default function Home() {
       );
   }, [contract]);
 
+  const tickerRow = [...TICKER, ...TICKER];
+
   return (
     <>
       <section className="hero">
@@ -28,7 +39,7 @@ export default function Home() {
           <h1>
             Weather coverage
             <br />
-            <span className="grad">that pays itself out.</span>
+            <span className="grn">that pays itself out.</span>
           </h1>
           <p className="lede">
             No claim forms. No adjusters. An insurer funds a payout against a
@@ -38,10 +49,10 @@ export default function Home() {
             moves on published data.
           </p>
           <div className="hero-cta">
-            <Link to="/policies" className="primary">
+            <Link to="/policies" className="btn">
               Browse coverage
             </Link>
-            <Link to="/create" className="ghost">
+            <Link to="/create" className="btn ghost">
               Issue a policy
             </Link>
           </div>
@@ -69,38 +80,47 @@ export default function Home() {
         </div>
       </section>
 
+      <div className="marquee-strip" aria-hidden="true">
+        <div className="marquee-track">
+          {tickerRow.map((t, i) => (
+            <span key={i} className="marquee-item">
+              {t} <em>☔</em>
+            </span>
+          ))}
+        </div>
+      </div>
+
       <section className="section">
         <div className="container">
+          <span className="section-kicker">The triggers</span>
           <h2 className="section-title">
-            How a policy <span className="accent">settles</span>
+            Rain. Heat. <span className="grn">Covered.</span>
           </h2>
-          <div className="steps">
-            <div className="step">
-              <div className="step-n">STEP 01</div>
-              <h3>An insurer funds the payout</h3>
+          <div className="feature-grid">
+            <div className="feature-card">
+              <span className="feature-emoji">🌧</span>
+              <h3>Rainfall triggers</h3>
               <p>
-                They set the location, the date window, the trigger (rainfall
-                below or above a threshold, temperature below or above one) and
-                the premium a buyer pays. The payout sits in escrow.
+                A policy covers a place and a window against drought or flood —
+                "less than 8mm of rain over Jakarta, Sept 4–7". The number
+                decides, not a claim.
               </p>
             </div>
-            <div className="step">
-              <div className="step-n">STEP 02</div>
-              <h3>A buyer takes the coverage</h3>
+            <div className="feature-card">
+              <span className="feature-emoji">🌡</span>
+              <h3>Temperature triggers</h3>
               <p>
-                Anyone who isn't the insurer pays the premium while the window
-                is still open. Buying closes the moment the window ends — no
-                taking coverage on an outcome that's already public.
+                Heatwave or cold snap — "max temperature above 33.5°C in
+                Singapore". Same mechanics, different thermometer.
               </p>
             </div>
-            <div className="step">
-              <div className="step-n">STEP 03</div>
-              <h3>Validators read the archive</h3>
+            <div className="feature-card">
+              <span className="feature-emoji">⚡</span>
+              <h3>Auto settlement</h3>
               <p>
-                After the window closes, anyone triggers settlement. Two
-                leaders fetch the same Open-Meteo data and must agree on the
-                number byte-for-byte. Trigger hit → buyer is paid. Missed →
-                insurer keeps the pot.
+                Anyone triggers it once the window closes. Two leaders fetch
+                the same archive and must agree byte-for-byte. No oracle, no
+                judge, no paperwork.
               </p>
             </div>
           </div>
@@ -109,24 +129,57 @@ export default function Home() {
 
       <section className="section alt">
         <div className="container">
+          <span className="section-kicker">What is RainGuard?</span>
           <h2 className="section-title">
-            Numbers, not opinions.{" "}
-            <span className="accent">No AI judgment call.</span>
+            A policy that <span className="grn">reads the weather itself.</span>
           </h2>
-          <p className="muted" style={{ maxWidth: 740, marginBottom: 26 }}>
-            The trigger is arithmetic on published weather history. Both
-            leaders compute the same value from the same archive, so consensus
-            is strict: outputs must match byte-for-byte. If the archive can't
-            be read, the policy stays active for a retry, and if consensus
-            never settles it within a week, both sides unwind — the premium
-            goes back to the buyer, the payout to the insurer. No one profits
-            from a network failure.
+          <p className="story muted">
+            Before claims, before adjusters, before insurance paperwork — there
+            was a number: how much it rained, how hot it got. RainGuard puts a
+            payout behind that number. The insurer locks the payout in escrow,
+            a buyer pays a premium for the coverage, and when the window closes
+            the contract reads the public weather archive and settles. Trigger
+            hit → the buyer is paid. Missed → the insurer keeps the pot.
           </p>
-          <div className="cta-band">
-            <Link to="/create" className="primary">
-              Put a payout behind the weather →
+          <p className="tagline">🌍 Public data. Consensus math. No claim to file.</p>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="container">
+          <div className="feature-grid two">
+            <Link to="/policies" className="feature-card">
+              <span className="feature-emoji">🛡️</span>
+              <h3>Live coverage board</h3>
+              <p>
+                Real policies on-chain right now — buy coverage, or settle one
+                the moment its window closes and the data lands.
+              </p>
+              <span className="arrow-link">Open the board →</span>
+            </Link>
+            <Link to="/create" className="feature-card">
+              <span className="feature-emoji">🌦</span>
+              <h3>Issue a policy</h3>
+              <p>
+                Put a payout behind a place, a window and a number. Lock it in
+                escrow, let the trigger decide who walks away with the pot.
+              </p>
+              <span className="arrow-link">Issue a policy →</span>
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section className="cta-band">
+        <div className="container">
+          <h2 className="section-title">🔥 Live on GenLayer StudioNet</h2>
+          <p className="muted">
+            Two real policies are in the wild right now — they settle as their
+            windows close. Watch the board, or fund the next one.
+          </p>
+          <Link to="/policies" className="btn">
+            See the live board
+          </Link>
         </div>
       </section>
     </>

@@ -39,8 +39,8 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 3px 11px;
-  border-radius: 999px;
+  padding: 3px 12px;
+  border-radius: 9999px;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.09em;
@@ -48,7 +48,7 @@
   font-family: var(--font-mono);
   border: 1px solid var(--border-strong);
   color: var(--muted);
-  background: rgba(148, 197, 255, 0.04);
+  background: rgba(91, 226, 106, 0.05);
   white-space: nowrap;
 }
 
@@ -62,17 +62,17 @@
 
 .status-chip.st-open {
   color: var(--sky);
-  border-color: rgba(79, 195, 247, 0.45);
+  border-color: rgba(91, 226, 106, 0.5);
 }
 
 .status-chip.st-active {
   color: var(--aqua);
-  border-color: rgba(77, 214, 200, 0.45);
+  border-color: rgba(143, 240, 163, 0.45);
 }
 
 .status-chip.st-paid {
   color: var(--sun);
-  border-color: rgba(255, 183, 77, 0.5);
+  border-color: rgba(250, 204, 21, 0.55);
 }
 
 .status-chip.st-expired,
@@ -85,8 +85,8 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 3px 11px;
-  border-radius: 999px;
+  padding: 3px 12px;
+  border-radius: 9999px;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.09em;
@@ -94,24 +94,29 @@
   font-family: var(--font-mono);
   align-self: flex-start;
   border: 1px solid var(--border-strong);
-  background: rgba(148, 197, 255, 0.04);
+  background: rgba(91, 226, 106, 0.05);
   color: var(--muted);
 }
 
 .metric-chip.rainfall {
   color: var(--sky);
-  border-color: rgba(79, 195, 247, 0.4);
+  border-color: rgba(91, 226, 106, 0.45);
 }
 
 .metric-chip.temperature {
   color: var(--violet);
-  border-color: rgba(180, 140, 255, 0.4);
+  border-color: rgba(255, 159, 69, 0.45);
 }
 
 /* ---------------------------------------------------- policy card */
 .policy-card {
   position: relative;
   gap: 13px;
+}
+
+.policy-card .pc-window,
+.policy-card .pc-money-col {
+  background: rgba(91, 226, 106, 0.03);
 }
 
 .pc-head {
@@ -121,17 +126,23 @@
   gap: 10px;
 }
 
+.pc-emoji {
+  font-size: 1.35rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 10px rgba(91, 226, 106, 0.35));
+}
+
 .pc-id {
   font-size: 0.72rem;
   color: var(--muted-2);
   letter-spacing: 0.12em;
   font-weight: 600;
+  margin-right: auto;
 }
 
 .pc-trigger {
   font-size: 1.22rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
   line-height: 1.25;
 }
 
@@ -229,13 +240,13 @@
 }
 
 .outcome-paid {
-  background: rgba(255, 183, 77, 0.08);
-  border-color: rgba(255, 183, 77, 0.45);
+  background: rgba(250, 204, 21, 0.1);
+  border-color: rgba(250, 204, 21, 0.5);
   color: var(--sun);
 }
 
 .outcome-expired {
-  background: rgba(148, 197, 255, 0.05);
+  background: rgba(91, 226, 106, 0.06);
   border-color: var(--border-strong);
   color: var(--muted);
 }
@@ -252,6 +263,10 @@
 
 .pc-actions button {
   flex: 1;
+  padding: 0.85rem 1.4rem;
+  white-space: normal;
+  justify-content: center;
+  text-align: center;
 }
 
 /* countdown text used inside cards */
@@ -288,7 +303,7 @@
 }
 
 .preset-chip.active {
-  background: rgba(79, 195, 247, 0.14);
+  background: rgba(91, 226, 106, 0.16);
   border-color: var(--sky);
   color: var(--sky);
   font-weight: 600;
@@ -319,7 +334,7 @@
   align-items: stretch;
   gap: 4px;
   text-align: left;
-  background: #0a1322;
+  background: #0d1611;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
@@ -333,12 +348,12 @@
 }
 
 .side-option:hover {
-  border-color: rgba(148, 197, 255, 0.45);
+  border-color: rgba(91, 226, 106, 0.55);
 }
 
 .side-option.selected {
   border-color: var(--sky);
-  background: rgba(79, 195, 247, 0.08);
+  background: rgba(91, 226, 106, 0.1);
 }
 
 .side-option.selected .side-sign {
@@ -347,7 +362,7 @@
 
 .side-opt-temp.selected {
   border-color: var(--violet);
-  background: rgba(180, 140, 255, 0.08);
+  background: rgba(255, 159, 69, 0.1);
 }
 
 .side-opt-temp.selected .side-sign {
@@ -360,8 +375,8 @@
 }
 
 .preview-trigger {
-  border: 1px solid rgba(79, 195, 247, 0.35);
-  background: rgba(79, 195, 247, 0.06);
+  border: 1px solid rgba(91, 226, 106, 0.4);
+  background: rgba(91, 226, 106, 0.08);
   color: var(--sky);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
@@ -384,7 +399,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   padding: 4px;
-  background: #0a1322;
+  background: #0d1611;
 }
 
 .segmented button {
@@ -402,7 +417,7 @@
 }
 
 .segmented button.active {
-  background: rgba(79, 195, 247, 0.16);
+  background: rgba(91, 226, 106, 0.18);
   color: var(--sky);
 }
 

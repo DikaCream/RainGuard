@@ -159,6 +159,7 @@ export default function Create() {
   return (
     <div className="page container page narrow">
       <div className="page-head">
+        <span className="kicker">Become the insurer</span>
         <h1>Issue a policy</h1>
         <p className="muted">
           You are the <strong>insurer</strong>: lock the payout in escrow and

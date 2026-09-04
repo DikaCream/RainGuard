@@ -64,6 +64,7 @@ export default function PolicyCard({
   return (
     <article className={`card policy-card pc-${p.status.toLowerCase()}`}>
       <div className="row pc-head">
+        <span className="pc-emoji">{p.metric === "rainfall" ? "🌧" : "🌡"}</span>
         <span className="pc-id mono">POLICY #{p.id}</span>
         <StatusBadge status={p.status} />
       </div>
