@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useRainGuard } from "../context/RainGuardContext";
+import { describeError } from "../lib/errors";
 import { formatGen } from "../lib/client";
 import type { Policy, Stats } from "../lib/types";
 import Radar from "../components/Radar";
@@ -140,9 +141,7 @@ export default function Home() {
         setStats(s);
         setPolicies(p);
       })
-      .catch((e) =>
-        setError(e instanceof Error ? e.message : "Failed to load stats."),
-      );
+      .catch((e) => setError(describeError(e)));
   }, [contract]);
 
   return (

@@ -288,6 +288,62 @@ def test_buy_twice_reverts(
     direct_vm.value = 0
 
 
+def test_buy_on_final_second_of_window_still_allowed(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    """Buying closes at midnight AFTER the last covered day, not before it: a
+    buyer may still take coverage on the window's final second, because the
+    outcome is not knowable until that day is over."""
+    contract = direct_deploy("contracts/rain_guard.py")
+    pid = create_policy(contract, direct_vm, direct_alice)
+
+    # 2030-01-05T23:59:59Z — the last second of the coverage window's final
+    # day (window is 2030-01-01..2030-01-05). Buying must still succeed.
+    set_time("2030-01-05T23:59:59Z")
+    direct_vm.sender = direct_bob
+    direct_vm.value = 100
+    contract.buy_policy(pid)
+    direct_vm.value = 0
+    assert contract.get_policy(pid)["status"] == "ACTIVE"
+
+    # One second later the window is over and the outcome is knowable:
+    # the same policy can no longer be bought.
+    set_time("2030-01-06T00:00:00Z")
+    pid2 = create_policy(contract, direct_vm, direct_alice)
+    direct_vm.sender = direct_bob
+    direct_vm.value = 100
+    with direct_vm.expect_revert("coverage window has ended"):
+        contract.buy_policy(pid2)
+    direct_vm.value = 0
+
+
+def test_trigger_equality_never_pays(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    """A trigger is strict on both sides: measured == threshold does not hit.
+    A drought cover at exactly the threshold is not drier, a heatwave cover at
+    exactly the threshold is not hotter. Only crossing the number pays."""
+    contract = direct_deploy("contracts/rain_guard.py")
+    # Sum of mock rainfall is exactly 1.5; a "below 1.5" drought must MISS.
+    pid = funded_policy(
+        contract, direct_vm, direct_alice, direct_bob,
+        metric="rainfall", threshold="1.5", condition="below",
+    )
+    # Max mock temperature is exactly 31.5; an "above 31.5" heatwave MISSES.
+    # Both policies are created while the window is still live, then both
+    # settle once it ends.
+    pid2 = funded_policy(
+        contract, direct_vm, direct_alice, direct_bob,
+        metric="temperature", threshold="31.5", condition="above",
+    )
+    set_time(SETTLE_ELIGIBLE_ISO)
+    mock_weather(direct_vm)
+    contract.settle_policy(pid)
+    contract.settle_policy(pid2)
+    assert contract.get_policy(pid)["status"] == "EXPIRED"
+    assert contract.get_policy(pid2)["status"] == "EXPIRED"
+
+
 def test_buy_after_window_end_reverts_and_never_settles(
     direct_vm, direct_deploy, direct_alice, direct_bob
 ):

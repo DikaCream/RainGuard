@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRainGuard } from "../context/RainGuardContext";
+import { describeError } from "../lib/errors";
 import { parseGen } from "../lib/client";
 import { MAX_PAYOUT_GEN, MAX_WINDOW_DAYS } from "../config";
 import { DropletIcon, ThermometerIcon, ShieldIcon, BoltIcon } from "../components/icons";
@@ -150,9 +151,7 @@ export default function Create() {
       await contract.waitForReceipt(txHash);
       navigate("/policies");
     } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : "Failed to issue policy.",
-      );
+      setSubmitError(describeError(err));
       setBusy(false);
     }
   }

@@ -347,6 +347,36 @@ textarea[aria-invalid="true"]:focus {
   color: var(--sky);
 }
 
+/* wallet connect wrapper + inline error */
+.wallet-connect {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  position: relative;
+}
+
+.wallet-connect .primary {
+  padding: 0.6rem 1.2rem;
+  font-size: 0.85rem;
+}
+
+.wallet-connect-error {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  max-width: 300px;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--danger);
+  background: #1a1212;
+  border: 1px solid rgba(255, 107, 107, 0.5);
+  border-radius: var(--radius-sm);
+  padding: 8px 11px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
 /* ---------------------------------------------------------------- navbar */
 .navbar {
   display: flex;

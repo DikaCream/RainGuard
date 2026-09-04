@@ -1,4 +1,5 @@
 import { useRainGuard } from "../context/RainGuardContext";
+import { describeError } from "../lib/errors";
 import { formatAddress, formatGen } from "../lib/client";
 
 export default function WalletButton() {
@@ -48,8 +49,15 @@ export default function WalletButton() {
   }
 
   return (
-    <button className="primary" onClick={wallet.connect} disabled={wallet.busy}>
-      {wallet.busy ? "Connecting…" : "Connect wallet"}
-    </button>
+    <div className="wallet-connect">
+      <button className="primary" onClick={wallet.connect} disabled={wallet.busy}>
+        {wallet.busy ? "Connecting…" : "Connect wallet"}
+      </button>
+      {wallet.error && (
+        <span className="wallet-connect-error" role="alert">
+          {describeError(wallet.error)}
+        </span>
+      )}
+    </div>
   );
 }

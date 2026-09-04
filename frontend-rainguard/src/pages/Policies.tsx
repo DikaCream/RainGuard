@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import PolicyCard from "../components/PolicyCard";
 import { useRainGuard } from "../context/RainGuardContext";
+import { describeError } from "../lib/errors";
 import type { Policy, Stats } from "../lib/types";
 import { formatGen } from "../lib/client";
 
@@ -37,7 +38,7 @@ export default function Policies() {
       setMyPolicies([...mine[0], ...mine[1]]);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load policies.");
+      setError(describeError(e));
     } finally {
       setLoading(false);
     }
@@ -63,7 +64,7 @@ export default function Policies() {
         await contract.waitForReceipt(txHash);
         await refresh();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Transaction failed.");
+        setError(describeError(e));
       } finally {
         setBusyId(null);
       }

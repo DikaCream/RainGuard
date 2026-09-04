@@ -28,8 +28,8 @@ State machine: OPEN -> ACTIVE -> PAID | EXPIRED | CANCELLED | REFUNDED.
 
 Buying closes when the coverage window closes: once the window is over, the
 outcome is already knowable from public weather data, so a stale OPEN policy
-can never be    bought and immediately settled. An insurer whose policy finds no buyer
-    before the window ends can only cancel and recover the payout.
+can never be bought and immediately settled. An insurer whose policy finds no
+buyer before the window ends can only cancel and recover the payout.
 """
 from genlayer import *
 from dataclasses import dataclass

@@ -8,6 +8,7 @@ import {
   onAccountsChanged,
   onChainChanged,
 } from "../lib/client";
+import { describeError } from "../lib/errors";
 import { STUDIONET_CHAIN_ID_HEX } from "../config";
 
 export function useWallet() {
@@ -61,7 +62,7 @@ export function useWallet() {
       setChainId(await getChainId());
       await refreshBalance(addr);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to connect wallet.");
+      setError(describeError(e));
     } finally {
       setBusy(false);
     }
