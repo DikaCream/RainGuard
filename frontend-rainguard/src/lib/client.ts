@@ -200,7 +200,13 @@ export function parseGen(input: string): bigint {
   return BigInt(whole) * GEN_ONE + BigInt(fracPadded || "0");
 }
 
-/** Format a wei amount as a human-readable GEN string. */
+/**
+ * Format a wei amount as a human-readable GEN string.
+ *
+ * Display at most 6 decimals: wei-scale dust (e.g. 8 wei) otherwise renders as
+ * an 18-decimal number that overflows every card it sits in. Anything smaller
+ * than 0.000001 GEN reads as "<0.000001 GEN" instead.
+ */
 export function formatGen(wei: bigint | string | number): string {
   const w = BigInt(wei);
   const sign = w < 0n ? "-" : "";
@@ -209,6 +215,9 @@ export function formatGen(wei: bigint | string | number): string {
   const frac = (abs % GEN_ONE)
     .toString()
     .padStart(Number(GEN_DECIMALS), "0")
+    .slice(0, 6)
     .replace(/0+$/, "");
-  return `${sign}${whole.toLocaleString()}${frac ? "." + frac : ""} GEN`;
+  if (frac) return `${sign}${whole.toLocaleString()}.${frac} GEN`;
+  if (abs > 0n && whole === 0n) return `${sign}~0 GEN`; // wei dust ≈ zero
+  return `${sign}${whole.toLocaleString()} GEN`;
 }

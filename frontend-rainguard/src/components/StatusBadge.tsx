@@ -1,4 +1,5 @@
 import type { PolicyStatus } from "../lib/types";
+import { DropletIcon, ThermometerIcon } from "./icons";
 
 const STATUS_LABEL: Record<PolicyStatus, string> = {
   OPEN: "Awaiting buyer",
@@ -20,7 +21,12 @@ export function StatusBadge({ status }: { status: PolicyStatus }) {
 export function MetricBadge({ metric }: { metric: "rainfall" | "temperature" }) {
   return (
     <span className={`metric-chip ${metric}`}>
-      {metric === "rainfall" ? "🌧 rainfall" : "🌡 temperature"}
+      {metric === "rainfall" ? (
+        <DropletIcon size={12} />
+      ) : (
+        <ThermometerIcon size={12} />
+      )}
+      {metric === "rainfall" ? "rainfall" : "temperature"}
     </span>
   );
 }

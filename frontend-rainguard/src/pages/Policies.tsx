@@ -98,41 +98,39 @@ export default function Policies() {
 
   return (
     <div className="page container">
-      <div className="page-head">
+      <div className="page-head" data-reveal>
         <span className="kicker">The live board</span>
         <h1>Coverage on the market</h1>
         <p className="muted">
-          Insurers fund a payout against a weather trigger; buyers pay the
-          premium to take coverage. Take an <strong>OPEN</strong> policy by
-          paying its premium, or settle an <strong>ACTIVE</strong> one once the
-          window has ended — the validators check the archive and the money
-          moves itself.
+          Take an <strong>OPEN</strong> policy by paying its premium, or settle
+          an <strong>ACTIVE</strong> one once its window ends. Validators check
+          the archive and the money moves itself.
         </p>
       </div>
 
       {error && <div className="error-banner">{error}</div>}
 
       {stats && (
-        <div className="stats-row" style={{ marginBottom: 26 }}>
-          <div className="stat">
-            <div className="stat-value">{stats.total_policies}</div>
-            <div className="stat-label">Policies on-chain</div>
+        <div className="mini-stats full" data-reveal>
+          <div className="mini-stat">
+            <span className="mini-stat-value">{stats.total_policies}</span>
+            <span className="mini-stat-label">policies on-chain</span>
           </div>
-          <div className="stat">
-            <div className="stat-value lime">{stats.active}</div>
-            <div className="stat-label">Coverage live</div>
+          <div className="mini-stat">
+            <span className="mini-stat-value lime">{stats.active}</span>
+            <span className="mini-stat-label">coverage live</span>
           </div>
-          <div className="stat">
-            <div className="stat-value amber">
+          <div className="mini-stat">
+            <span className="mini-stat-value amber">
               {stats.escrow_locked === 0n
                 ? "0"
                 : formatGen(stats.escrow_locked)}
-            </div>
-            <div className="stat-label">Held in escrow</div>
+            </span>
+            <span className="mini-stat-label">held in escrow</span>
           </div>
-          <div className="stat">
-            <div className="stat-value">{stats.paid}</div>
-            <div className="stat-label">Policies paid out</div>
+          <div className="mini-stat">
+            <span className="mini-stat-value">{stats.paid}</span>
+            <span className="mini-stat-label">policies paid out</span>
           </div>
         </div>
       )}

@@ -2,6 +2,8 @@ import type { Policy } from "../lib/types";
 import { formatAddress, formatGen } from "../lib/client";
 import Countdown from "./Countdown";
 import { MetricBadge, StatusBadge } from "./StatusBadge";
+import { DropletIcon, ThermometerIcon } from "./icons";
+import { useTilt } from "../hooks/useTilt";
 
 interface PolicyCardProps {
   policy: Policy;
@@ -50,6 +52,7 @@ export default function PolicyCard({
   onSettle,
   onCloseStale,
 }: PolicyCardProps) {
+  const tilt = useTilt<HTMLElement>({ max: 4 });
   const isInsurer = !!me && me.toLowerCase() === p.insurer.toLowerCase();
   const isBuyer = !!me && p.buyer && me.toLowerCase() === p.buyer.toLowerCase();
   const canSettle = p.status === "ACTIVE" && now >= p.settle_eligible_at;
@@ -62,9 +65,18 @@ export default function PolicyCard({
   const coordsLabel = `(${describeLocation(p)})`;
 
   return (
-    <article className={`card policy-card pc-${p.status.toLowerCase()}`}>
+    <article
+      className={`card policy-card tilt glare pc-${p.status.toLowerCase()}`}
+      {...tilt}
+    >
       <div className="row pc-head">
-        <span className="pc-emoji">{p.metric === "rainfall" ? "🌧" : "🌡"}</span>
+        <span className="pc-emoji pop">
+          {p.metric === "rainfall" ? (
+            <DropletIcon size={22} />
+          ) : (
+            <ThermometerIcon size={22} />
+          )}
+        </span>
         <span className="pc-id mono">POLICY #{p.id}</span>
         <StatusBadge status={p.status} />
       </div>
@@ -125,19 +137,19 @@ export default function PolicyCard({
       {p.status === "PAID" && (
         <div className="pc-outcome outcome-paid">
           Measured {p.measured}
-          {p.metric === "rainfall" ? " mm" : " °C"} — trigger hit, buyer paid.
+          {p.metric === "rainfall" ? " mm" : " °C"}. Trigger hit, buyer paid.
         </div>
       )}
       {p.status === "EXPIRED" && (
         <div className="pc-outcome outcome-expired">
           Measured {p.measured}
-          {p.metric === "rainfall" ? " mm" : " °C"} — trigger missed, insurer
+          {p.metric === "rainfall" ? " mm" : " °C"}. Trigger missed, insurer
           keeps the pot.
         </div>
       )}
       {p.status === "REFUNDED" && (
         <div className="pc-outcome outcome-refunded">
-          Never settled — premium back to buyer, payout back to insurer.
+          Never settled. Premium back to buyer, payout back to insurer.
         </div>
       )}
 
@@ -199,7 +211,7 @@ export default function PolicyCard({
             className="ghost small"
             disabled={busy}
             onClick={() => onCloseStale(p)}
-            title="Consensus never settled — unwind both sides"
+            title="Consensus never settled: unwind both sides"
           >
             Close stale (unwind)
           </button>

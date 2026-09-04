@@ -61,8 +61,8 @@
 }
 
 .status-chip.st-open {
-  color: var(--sky);
-  border-color: rgba(91, 226, 106, 0.5);
+  color: var(--info);
+  border-color: rgba(83, 201, 214, 0.5);
 }
 
 .status-chip.st-active {
@@ -127,9 +127,22 @@
 }
 
 .pc-emoji {
-  font-size: 1.35rem;
-  line-height: 1;
-  filter: drop-shadow(0 0 10px rgba(91, 226, 106, 0.35));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: rgba(91, 226, 106, 0.07);
+  color: var(--sky);
+  flex-shrink: 0;
+}
+
+.pc-temperature .pc-emoji {
+  border-color: rgba(255, 159, 69, 0.4);
+  background: rgba(255, 159, 69, 0.08);
+  color: var(--violet);
 }
 
 .pc-id {
@@ -195,6 +208,8 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 8px 12px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .pc-money-label {
@@ -211,6 +226,10 @@
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .pc-premium {
@@ -372,6 +391,9 @@
 .side-sign {
   font-weight: 700;
   color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .preview-trigger {
@@ -435,6 +457,8 @@
   font-size: 1.6rem;
   font-weight: 700;
   color: var(--sun);
+  overflow-wrap: anywhere;
+  line-height: 1.2;
 }
 
 .quote-box .quote-note {
@@ -465,10 +489,59 @@
   padding: 20px;
 }
 
-.rail-card h4 {
+.rail-card h4.rail-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 0.95rem;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  color: var(--sky);
+}
+
+.rail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 0.86rem;
+}
+
+.rail-row:last-of-type {
+  border-bottom: none;
+}
+
+.rail-row .rk {
+  color: var(--muted-2);
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.rail-row .rv {
   color: var(--text);
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.rail-row .rv.rv-sky {
+  color: var(--sky);
+}
+
+.rail-row .rv.rv-sun {
+  color: var(--sun);
+}
+
+.rail-note {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 12px 0 0;
+  line-height: 1.55;
 }
 
 .rail-card ul {

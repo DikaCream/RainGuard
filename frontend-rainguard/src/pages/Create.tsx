@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useRainGuard } from "../context/RainGuardContext";
 import { parseGen } from "../lib/client";
 import { MAX_PAYOUT_GEN, MAX_WINDOW_DAYS } from "../config";
+import { DropletIcon, ThermometerIcon, ShieldIcon, BoltIcon } from "../components/icons";
 
 interface FieldErrors {
   metric?: string;
@@ -156,29 +157,33 @@ export default function Create() {
     }
   }
 
+  const recapCity =
+    city || (lat && lon ? `${lat.trim()}, ${lon.trim()}` : "");
+  const recapTrigger = `${metric} ${condition} ${threshold.trim() || "…"}${units}`;
+
   return (
-    <div className="page container page narrow">
-      <div className="page-head">
+    <div className="page container">
+      <div className="page-head" data-reveal>
         <span className="kicker">Become the insurer</span>
         <h1>Issue a policy</h1>
         <p className="muted">
-          You are the <strong>insurer</strong>: lock the payout in escrow and
-          set the premium a buyer pays for coverage. When the window closes,
-          GenLayer's validators read the Open-Meteo archive for the exact
-          location and dates. Trigger hit → buyer is paid; trigger missed →
-          you get the payout and premium back.{" "}
-          <strong>No claim is ever filed.</strong>
+          Lock the payout in escrow and set the premium a buyer pays for
+          coverage. When the window closes, validators read the Open-Meteo
+          archive. Trigger hit, the buyer is paid; missed, the pot returns to
+          you. <strong>No claim is ever filed.</strong>
         </p>
       </div>
 
       {submitError && <div className="error-banner">{submitError}</div>}
       {!wallet.address && (
         <div className="notice">
-          Connect your wallet to issue a policy. StudioNet is gasless — you
-          only send the payout, which sits in escrow until the window settles.
+          Connect your wallet to issue a policy. StudioNet is gasless, so
+          issuing only needs the payout amount; it sits in escrow until the
+          window settles.
         </div>
       )}
 
+      <div className="side-layout">
       <form className="form panel" onSubmit={onSubmit} noValidate>
         <label>
           What does it cover?
@@ -191,7 +196,9 @@ export default function Create() {
               aria-pressed={metric === "rainfall"}
               onClick={() => setMetric("rainfall")}
             >
-              <span className="side-sign">🌧 Rainfall</span>
+              <span className="side-sign">
+                <DropletIcon size={15} /> Rainfall
+              </span>
               <span>sum over the window, in mm</span>
             </button>
             <button
@@ -202,7 +209,9 @@ export default function Create() {
               aria-pressed={metric === "temperature"}
               onClick={() => setMetric("temperature")}
             >
-              <span className="side-sign">🌡 Temperature</span>
+              <span className="side-sign">
+                <ThermometerIcon size={15} /> Temperature
+              </span>
               <span>max daily temperature, in °C</span>
             </button>
           </div>
@@ -384,6 +393,55 @@ export default function Create() {
             : `Lock ${payout.trim() || "…"} GEN as payout`}
         </button>
       </form>
+
+      <aside className="sticky-rail" data-reveal>
+        <div className="rail-card">
+          <h4 className="rail-title">
+            <ShieldIcon size={16} /> Coverage recap
+          </h4>
+          <div className="rail-row">
+            <span className="rk">Trigger</span>
+            <span className="rv rv-sky">{recapTrigger}</span>
+          </div>
+          <div className="rail-row">
+            <span className="rk">Location</span>
+            <span className="rv">{recapCity || "—"}</span>
+          </div>
+          <div className="rail-row">
+            <span className="rk">Window</span>
+            <span className="rv">
+              {startDate} → {endDate}
+            </span>
+          </div>
+          <div className="rail-row">
+            <span className="rk">Premium</span>
+            <span className="rv">{premium.trim() || "…"} GEN</span>
+          </div>
+          <div className="rail-row">
+            <span className="rk">Escrow</span>
+            <span className="rv rv-sun">{payout.trim() || "…"} GEN</span>
+          </div>
+          <p className="rail-note">
+            You send the payout now. It sits in escrow until the window
+            settles, and buying closes the moment the window ends.
+          </p>
+        </div>
+
+        <div className="rail-card">
+          <h4 className="rail-title">
+            <BoltIcon size={16} /> How it settles
+          </h4>
+          <ul>
+            <li>Window closes → anyone can trigger settlement.</li>
+            <li>
+              Validators fetch the Open-Meteo archive and must agree
+              byte-for-byte.
+            </li>
+            <li>Trigger hit → buyer paid. Missed → pot back to you.</li>
+          </ul>
+        </div>
+      </aside>
+      </div>
     </div>
   );
 }
