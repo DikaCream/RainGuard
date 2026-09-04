@@ -2,7 +2,7 @@
 
 Parametric weather insurance on GenLayer. An insurer funds a payout against a measurable trigger, a buyer pays a premium for the coverage, and when the covered window closes the validators read the Open-Meteo archive for that exact place and those dates. Trigger hits, the buyer is paid. It misses, the insurer keeps the pot. Nobody files a claim and nobody argues.
 
-Live at `https://rainguard-eight.vercel.app`. Contract `0x1b296C21d6362bDb92A4ec6b0F1664bc4C173Cd9` on StudioNet.
+Live at `https://rainguard-eight.vercel.app`. Contract `0xEaf759D40412D1445b54d712c94cde16c60E36ee` on StudioNet.
 
 ## What it covers
 
@@ -28,7 +28,7 @@ contracts/rain_guard.py              the contract
 frontend-rainguard/                  Vite + React app (create, browse, buy, settle)
 tests/direct/test_rain_guard.py      fast VM tests, mocked weather
 tests/integration/test_rain_guard.py on-chain tests, real consensus
-tests/seed_rainguard_live.py         deploy + seed live demo policies
+tests/deploy_reseed_rainguard.py     deploy a fresh copy + seed live demo policies
 ```
 
 ## Running the tests
@@ -37,7 +37,7 @@ The direct suite needs only the gltest venv:
 
 ```bash
 pip install -r requirements.txt
-pytest tests/direct/ -q              # 30 tests
+pytest tests/direct/test_rain_guard.py -q   # 32 tests
 genvm-lint check contracts/rain_guard.py
 ```
 
@@ -54,10 +54,10 @@ networks:
 gltest --network studionet tests/integration/test_rain_guard.py -v -s
 ```
 
-To redeploy and reseed the live board:
+To redeploy a fresh copy and reseed the live board:
 
 ```bash
-gltest --network studionet tests/seed_rainguard_live.py -v -s
+gltest --network studionet tests/deploy_reseed_rainguard.py -v -s
 ```
 
 Copy the printed address into `frontend-rainguard/src/config.ts`, or set the Vercel env var `VITE_CONTRACT_ADDRESS`, then rebuild.

@@ -17,7 +17,7 @@ function env(name: string, fallback: string): string {
 
 export const CONTRACT_ADDRESS = env(
   "VITE_CONTRACT_ADDRESS",
-  "0x1b296C21d6362bDb92A4ec6b0F1664bc4C173Cd9",
+  "0xEaf759D40412D1445b54d712c94cde16c60E36ee",
 );
 
 export const NETWORK = env("VITE_GENLAYER_NETWORK", "studionet");
