@@ -58,9 +58,7 @@ export default function PolicyCard({
   const canSettle = p.status === "ACTIVE" && now >= p.settle_eligible_at;
   const canCloseStale = p.status === "ACTIVE" && now >= p.stale_at;
   const windowLabel =
-    p.start_date === p.end_date
-      ? p.end_date
-      : `${p.start_date} → ${p.end_date}`;
+    p.start_date === p.end_date ? p.end_date : `${p.start_date} to ${p.end_date}`;
 
   const coordsLabel = `(${describeLocation(p)})`;
 
@@ -189,7 +187,7 @@ export default function PolicyCard({
             disabled={busy || !me}
             onClick={() => onBuy(p)}
           >
-            Buy coverage · {formatGen(p.premium)}
+            Take coverage for {formatGen(p.premium)}
           </button>
         )}
         {p.status === "OPEN" && !isInsurer && !me && (

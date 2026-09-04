@@ -159,7 +159,7 @@ export default function Create() {
 
   const recapCity =
     city || (lat && lon ? `${lat.trim()}, ${lon.trim()}` : "");
-  const recapTrigger = `${metric} ${condition} ${threshold.trim() || "…"}${units}`;
+  const recapTrigger = `${metric} ${condition} ${threshold.trim() || "–"}${units}`;
 
   return (
     <div className="page container">
@@ -390,7 +390,9 @@ export default function Create() {
         >
           {busy
             ? "Issuing…"
-            : `Lock ${payout.trim() || "…"} GEN as payout`}
+            : payout.trim()
+              ? `Lock ${payout.trim()} GEN as payout`
+              : "Lock the payout in escrow"}
         </button>
       </form>
 
@@ -405,21 +407,21 @@ export default function Create() {
           </div>
           <div className="rail-row">
             <span className="rk">Location</span>
-            <span className="rv">{recapCity || "—"}</span>
+            <span className="rv">{recapCity || "–"}</span>
           </div>
           <div className="rail-row">
             <span className="rk">Window</span>
             <span className="rv">
-              {startDate} → {endDate}
+              {startDate} to {endDate}
             </span>
           </div>
           <div className="rail-row">
             <span className="rk">Premium</span>
-            <span className="rv">{premium.trim() || "…"} GEN</span>
+            <span className="rv">{premium.trim() || "–"} GEN</span>
           </div>
           <div className="rail-row">
             <span className="rk">Escrow</span>
-            <span className="rv rv-sun">{payout.trim() || "…"} GEN</span>
+            <span className="rv rv-sun">{payout.trim() || "–"} GEN</span>
           </div>
           <p className="rail-note">
             You send the payout now. It sits in escrow until the window
@@ -432,12 +434,12 @@ export default function Create() {
             <BoltIcon size={16} /> How it settles
           </h4>
           <ul>
-            <li>Window closes → anyone can trigger settlement.</li>
+            <li>Window closes, then anyone can trigger settlement.</li>
             <li>
               Validators fetch the Open-Meteo archive and must agree
               byte-for-byte.
             </li>
-            <li>Trigger hit → buyer paid. Missed → pot back to you.</li>
+            <li>Trigger hit, buyer paid. Missed, pot back to you.</li>
           </ul>
         </div>
       </aside>

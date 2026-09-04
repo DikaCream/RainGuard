@@ -24,6 +24,7 @@ export default function App() {
   return (
     <RainGuardProvider>
       <div className="sky-fade" aria-hidden="true" />
+      <div className="grain" aria-hidden="true" />
       <ScrollToTop />
       <RevealObserver />
       <Navbar />

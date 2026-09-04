@@ -9,9 +9,10 @@ export default function Footer() {
         <div>
           <Logo />
           <p className="muted" style={{ maxWidth: 380, marginTop: 12 }}>
-            Parametric weather coverage on GenLayer. An insurer funds a payout
-            against a measurable trigger; when the window closes, validators
-            read the Open-Meteo archive and the money moves by itself.
+            RainGuard ties a payout to a published weather number. An insurer
+            funds it, a buyer pays for the coverage, and when the window closes
+            GenLayer's validators read the Open-Meteo archive. Hit or miss, the
+            numbers settle it.
           </p>
         </div>
         <div className="footer-col">

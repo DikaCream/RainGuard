@@ -55,16 +55,22 @@ export default function Radar({ policies, stats }: RadarProps) {
             <div className="radar-ring r1" />
             <div className="radar-ring r2" />
             <div className="radar-ring r3" />
+            <div className="radar-dash" />
             <div className="radar-cross cx" />
             <div className="radar-cross cy" />
             <div className="radar-sweep" />
+            <span className="radar-tick tn">N</span>
+            <span className="radar-tick ts">S</span>
+            <span className="radar-tick te">E</span>
+            <span className="radar-tick tw">W</span>
             {blips.map((b) => (
               <span
                 key={b.id}
                 className={`radar-blip ${b.metric}`}
                 style={{ left: `${b.left}%`, top: `${b.top}%` }}
-                title={`Policy #${b.id} — ${b.metric}`}
+                title={`Policy #${b.id}: ${b.metric}`}
               >
+                <span className="radar-ping" />
                 <span className="radar-blip-dot" />
                 <span className="radar-blip-tag">#{b.id}</span>
               </span>
@@ -77,17 +83,17 @@ export default function Radar({ policies, stats }: RadarProps) {
 
       <div className="radar-readout mono">
         <div>
-          <span className="rr-label">SYS</span> radar online ·{" "}
+          <span className="rr-label">SYS</span> radar online /{" "}
           {blips.length} contact{blips.length === 1 ? "" : "s"}
         </div>
         <div>
           <span className="rr-label">ESCROW</span>{" "}
-          {stats ? formatGen(stats.escrow_locked) : "—"}
+          {stats ? formatGen(stats.escrow_locked) : "–"}
         </div>
         <div>
-          <span className="rr-label">OPEN</span> {stats?.open ?? "—"} ·{" "}
-          <span className="rr-label">LIVE</span> {stats?.active ?? "—"} ·{" "}
-          <span className="rr-label">PAID</span> {stats?.paid ?? "—"}
+          <span className="rr-label">OPEN</span> {stats?.open ?? "–"} /{" "}
+          <span className="rr-label">LIVE</span> {stats?.active ?? "–"} /{" "}
+          <span className="rr-label">PAID</span> {stats?.paid ?? "–"}
         </div>
       </div>
     </div>

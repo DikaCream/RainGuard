@@ -23,12 +23,12 @@ const TICKER = [
 ];
 
 /**
- * Scrolling ticker driven by requestAnimationFrame instead of CSS animation,
- * so it runs in every environment (including OS reduced-motion settings that
- * would otherwise freeze it). The track holds the ticker twice; it loops by
- * wrapping the offset at half the track width.
+ * Double-decker ticker driven by requestAnimationFrame so it runs in every
+ * environment (including OS reduced-motion settings that freeze CSS
+ * animations). Each track holds the ticker twice and loops by wrapping the
+ * offset at half the track width; the second row scrolls the other way.
  */
-function Ticker() {
+function TickerRow({ reverse = false }: { reverse?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,29 +37,43 @@ function Ticker() {
     let raf = 0;
     let x = 0;
     let last = performance.now();
+    const speed = reverse ? 34 : 46; // px per second
     const step = (t: number) => {
       const dt = Math.min(t - last, 100);
       last = t;
-      x -= (dt / 1000) * 40; // 40px per second
+      x += reverse ? (dt / 1000) * speed : -(dt / 1000) * speed;
       const half = el.scrollWidth / 2;
-      if (half > 0 && x <= -half) x += half;
+      if (half > 0) {
+        if (x <= -half) x += half;
+        if (x >= 0) x -= half;
+      }
       el.style.transform = `translateX(${x}px)`;
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [reverse]);
 
   const tickerRow = [...TICKER, ...TICKER];
   return (
-    <div className="marquee-strip" aria-hidden="true">
-      <div className="marquee-track" ref={ref}>
-        {tickerRow.map((t, i) => (
-          <span key={i} className="marquee-item">
-            {t} <em>◆</em>
+    <div className={`marquee-track ${reverse ? "rev" : ""}`} ref={ref}>
+      {tickerRow.map((t, i) => (
+        <span key={i} className="marquee-item">
+          {t}
+          <span className="mq-sep">
+            <DropletIcon size={13} />
           </span>
-        ))}
-      </div>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function Ticker() {
+  return (
+    <div className="marquee-strip" aria-hidden="true">
+      <TickerRow />
+      <TickerRow reverse />
     </div>
   );
 }
@@ -73,10 +87,16 @@ interface FeatureProps {
   arrow?: string;
 }
 
-/** Shared innards of a feature card. */
 function FeatureInner({ icon, iconColor, title, body, arrow }: FeatureProps) {
   return (
     <>
+      <span
+        className="fw"
+        aria-hidden="true"
+        style={iconColor ? { color: iconColor } : undefined}
+      >
+        {icon}
+      </span>
       <span
         className="feature-emoji pop"
         style={iconColor ? { color: iconColor } : undefined}
@@ -138,7 +158,7 @@ export default function Home() {
               <br />
               <span className="text-outline">that pays</span>
               <br />
-              itself out.
+              <span className="text-grad">itself out.</span>
             </h1>
             <p className="lede">
               No claim forms, no adjusters. An insurer funds a payout against a
@@ -157,21 +177,21 @@ export default function Home() {
             {error && <div className="error-banner">{error}</div>}
             <div className="mini-stats">
               <div className="mini-stat">
-                <span className="mini-stat-value">{stats?.total_policies ?? "—"}</span>
+                <span className="mini-stat-value">{stats?.total_policies ?? "–"}</span>
                 <span className="mini-stat-label">policies on-chain</span>
               </div>
               <div className="mini-stat">
-                <span className="mini-stat-value lime">{stats?.active ?? "—"}</span>
+                <span className="mini-stat-value lime">{stats?.active ?? "–"}</span>
                 <span className="mini-stat-label">coverage live</span>
               </div>
               <div className="mini-stat">
                 <span className="mini-stat-value amber">
-                  {stats ? formatGen(stats.escrow_locked) : "—"}
+                  {stats ? formatGen(stats.escrow_locked) : "–"}
                 </span>
                 <span className="mini-stat-label">in escrow</span>
               </div>
               <div className="mini-stat">
-                <span className="mini-stat-value">{stats?.paid ?? "—"}</span>
+                <span className="mini-stat-value">{stats?.paid ?? "–"}</span>
                 <span className="mini-stat-label">paid out</span>
               </div>
             </div>
@@ -179,6 +199,19 @@ export default function Home() {
 
           <div className="hero-visual">
             <Radar policies={policies} stats={stats} />
+            {stats && (
+              <>
+                <span className="float-chip fc-live" aria-hidden="true">
+                  <span className="pulse" /> {stats.active} ACTIVE
+                </span>
+                <span className="float-chip fc-escrow" aria-hidden="true">
+                  {formatGen(stats.escrow_locked)} ESCROW
+                </span>
+                <span className="float-chip fc-paid" aria-hidden="true">
+                  {stats.paid} PAID OUT
+                </span>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -187,9 +220,9 @@ export default function Home() {
 
       <section className="section">
         <div className="container" data-reveal>
-          <span className="section-kicker">The triggers</span>
+          <span className="section-kicker">01 / The triggers</span>
           <h2 className="section-title">
-            Rain. Heat. <span className="grn">Covered.</span>
+            Rain. Heat. <span className="text-outline-sm">Covered.</span>
           </h2>
           <div className="feature-grid">
             <Feature
@@ -234,21 +267,21 @@ export default function Home() {
 
       <section className="section alt angle">
         <div className="container" data-reveal>
-          <span className="section-kicker">What is RainGuard?</span>
+          <span className="section-kicker">02 / What is RainGuard?</span>
           <h2 className="section-title">
-            A policy that <span className="grn">reads the weather itself.</span>
-          </h2>
-          <p className="story muted">
-            Before claims, before adjusters, before insurance paperwork — there
-            was a number: how much it rained, how hot it got. RainGuard puts a
-            payout behind that number. The insurer locks the payout in escrow,
-            a buyer pays a premium for the coverage, and when the window closes
-            the contract reads the public weather archive and settles.{" "}
-            <span className="story-outcome">
-              Trigger hit → the buyer is paid. Missed → the insurer keeps the
-              pot.
-            </span>
-          </p>
+            A policy that{" "}
+            <span className="text-grad">reads the weather itself.</span>
+          </h2>            <p className="story muted">
+              Before claims, before adjusters, before insurance paperwork, there
+              was a number: how much it rained, how hot it got. RainGuard puts a
+              payout behind that number. The insurer locks it in escrow, a
+              buyer pays a premium for the coverage, and when the window closes
+              the contract reads the public weather archive and settles.{" "}
+              <span className="story-outcome">
+                Trigger hit, the buyer is paid. Missed, the insurer keeps the
+                pot.
+              </span>
+            </p>
           <p className="tagline">
             <ShieldIcon size={18} /> The archive decides. The contract pays.
           </p>
@@ -257,10 +290,11 @@ export default function Home() {
 
       <section className="section">
         <div className="container" data-reveal>
+          <span className="section-kicker">03 / Where to go next</span>
           <div className="feature-grid two">
             <Feature
               to="/policies"
-              arrow="Open the board →"
+              arrow="Open the board"
               icon={<RadarIcon size={26} />}
               title="Live coverage board"
               body={
@@ -272,7 +306,7 @@ export default function Home() {
             />
             <Feature
               to="/create"
-              arrow="Issue a policy →"
+              arrow="Issue a policy"
               icon={<ThermometerIcon size={26} />}
               iconColor="var(--violet)"
               title="Issue a policy"
@@ -291,7 +325,7 @@ export default function Home() {
       <section className="cta-band" data-reveal>
         <div className="container">
           <h2 className="section-title">
-            <RadarIcon size={30} /> Live on GenLayer StudioNet
+            <RadarIcon size={30} /> 04 / Live on GenLayer StudioNet
           </h2>
           <p className="muted">
             Real policies are in the wild right now and settle as their windows

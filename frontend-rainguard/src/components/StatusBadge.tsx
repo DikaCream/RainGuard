@@ -4,7 +4,7 @@ import { DropletIcon, ThermometerIcon } from "./icons";
 const STATUS_LABEL: Record<PolicyStatus, string> = {
   OPEN: "Awaiting buyer",
   ACTIVE: "Coverage live",
-  PAID: "Trigger hit · paid",
+  PAID: "Trigger hit, paid",
   EXPIRED: "Trigger missed",
   CANCELLED: "Cancelled",
   REFUNDED: "Unwound",

@@ -189,7 +189,7 @@ export default function Policies() {
             <div className="empty">
               <p>No policies yet.</p>
               <p>
-                <a href="/create">Issue the first one →</a>
+                <a href="/create">Issue the first one</a>
               </p>
             </div>
           ) : visibleOther.length === 0 ? (
@@ -197,7 +197,7 @@ export default function Policies() {
               <p>No open or active policies right now.</p>
               <p>
                 <button className="ghost" onClick={() => setFilter("all")}>
-                  Show all (including settled) →
+                  Show settled policies too
                 </button>
               </p>
             </div>
