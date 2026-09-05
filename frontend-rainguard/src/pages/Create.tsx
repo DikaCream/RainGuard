@@ -44,8 +44,12 @@ export default function Create() {
   const [city, setCity] = useState(""); // preset label, or custom coords
   const [lat, setLat] = useState("-6.2");
   const [lon, setLon] = useState("106.8");
-  const [startDate, setStartDate] = useState(todayISO());
-  const [endDate, setEndDate] = useState(addDaysISO(todayISO(), 7));
+  // Coverage can only be created BEFORE it begins, so the earliest start date
+  // is tomorrow (midnight UTC today has already passed).
+  const [startDate, setStartDate] = useState(() => addDaysISO(todayISO(), 1));
+  const [endDate, setEndDate] = useState(() =>
+    addDaysISO(addDaysISO(todayISO(), 1), 7),
+  );
   const [threshold, setThreshold] = useState("");
   const [condition, setCondition] = useState<"below" | "above">("below");
   const [premium, setPremium] = useState("");
@@ -94,12 +98,14 @@ export default function Create() {
     } else {
       const s = new Date(startDate + "T00:00:00Z").getTime();
       const e = new Date(endDate + "T00:00:00Z").getTime();
-      const today = new Date(todayISO() + "T00:00:00Z").getTime();
+      // Midnight UTC tomorrow: coverage must start strictly after "now".
+      const tomorrow = new Date(addDaysISO(todayISO(), 1) + "T00:00:00Z").getTime();
       if (e < s) errors.dates = "End date must not be before start date.";
       else if (e - s > (MAX_WINDOW_DAYS - 1) * 86400000)
         errors.dates = `Window must be ${MAX_WINDOW_DAYS} days or less.`;
-      else if (e + 86400000 < today)
-        errors.dates = "The window must end today or later.";
+      else if (s < tomorrow)
+        errors.dates =
+          "Coverage must start tomorrow or later — a policy is only issued before its window begins.";
     }
     const t = Number(threshold);
     if (!threshold.trim() || !isFinite(t) || t <= 0) {
@@ -274,10 +280,15 @@ export default function Create() {
             <input
               type="date"
               value={startDate}
+              min={addDaysISO(todayISO(), 1)}
               max={endDate}
               onChange={(e) => setStartDate(e.target.value)}
               aria-invalid={!!fieldErrors.dates || undefined}
             />
+            <span className="hint">
+              Coverage can only be issued before it begins — earliest start is
+              tomorrow.
+            </span>
           </label>
           <label>
             Window end (UTC)
@@ -424,7 +435,7 @@ export default function Create() {
           </div>
           <p className="rail-note">
             You send the payout now. It sits in escrow until the window
-            settles, and buying closes the moment the window ends.
+            settles, and buying closes the moment the window opens.
           </p>
         </div>
 

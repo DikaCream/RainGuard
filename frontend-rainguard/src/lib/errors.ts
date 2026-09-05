@@ -40,11 +40,13 @@ export async function withReadRetry<T>(fn: () => Promise<T>): Promise<T> {
  * the clearest possible error for a user; anything else stays generic.
  */
 const KNOWN_REVERTS: Array<[RegExp, string]> = [
-  [/coverage window has ended/, "Buying closed when the coverage window ended. This policy can no longer be bought; the insurer can still cancel it."],
+  [/coverage has already begun/, "Buying closed when the coverage window opened. Coverage can only be bought before it begins; the insurer can still cancel this policy."],
+  [/coverage must not have begun yet/, "The window has already started, so this coverage can't be created. A policy is only issued before its window opens."],
   [/coverage window has not ended yet/, "The coverage window is still running. Settlement opens after the window ends."],
   [/policy is not active/, "This policy is not active, so it cannot be settled or closed."],
   [/policy is not open for purchase/, "This policy is no longer open for purchase (already bought or cancelled)."],
   [/policy is not stale yet/, "This policy is not stale yet. It can only be unwound after the stale window passes."],
+  [/settlement retries not exhausted/, "This policy hasn't exhausted its settlement retries yet. Stale closure only opens after recorded failed attempts hit the limit."],
   [/settlement retry limit reached/, "Settlement retries ran out. Close the policy as stale to refund both sides."],
   [/settlement was just attempted/, "Settlement was just attempted. Wait a few minutes before retrying."],
   [/exact payout must be sent/, "Send exactly the payout amount to fund the escrow."],
@@ -56,7 +58,6 @@ const KNOWN_REVERTS: Array<[RegExp, string]> = [
   [/insurer cannot buy their own policy/, "The insurer cannot buy their own policy."],
   [/only the insurer can cancel/, "Only the insurer who funded this policy can cancel it."],
   [/only an open policy can be cancelled/, "Only an open policy can be cancelled; this one is already taken or settled."],
-  [/end_date must be today or later/, "The window must end today or later. Past windows cannot be insured."],
   [/end_date must not be before start_date/, "The end date must not be before the start date."],
   [/window must be \d+ days or less/, "The coverage window is capped at 31 days."],
   [/metric must be rainfall or temperature/, "Pick rainfall or temperature as the metric."],

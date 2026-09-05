@@ -29,20 +29,24 @@ def test_deploy_and_seed():
     print(f"\nNEW CONTRACT ADDRESS: {address}\n")
 
     # Policy 1 — OPEN, Jakarta rainfall drought cover (below 8mm), so a
-    # visitor can actually buy it from the live board.
+    # visitor can actually buy it from the live board. Its window starts in
+    # the future (+2d..+5d) because the contract only issues coverage before
+    # the window begins.
     receipt = contract.create_policy(
         args=[
-            "rainfall", "-6.2", "106.8", _day(0), _day(4),
+            "rainfall", "-6.2", "106.8", _day(2), _day(5),
             "8.0", "below", 5 * 10**17, 5 * GEN,
         ],
     ).transact(value=5 * GEN, wait_interval=10000, wait_retries=15)
     assert tx_execution_succeeded(receipt), receipt
     print("policy 1 (OPEN, rainfall, payout 5 GEN): OK")
 
-    # Policy 2 — Singapore temperature heatwave cover, bought -> ACTIVE.
+    # Policy 2 — Singapore temperature heatwave cover, bought -> ACTIVE. A
+    # short window starting tomorrow means it becomes settle-eligible two
+    # days later, giving a real post-window settlement to demonstrate.
     receipt = contract.create_policy(
         args=[
-            "temperature", "1.35", "103.82", _day(0), _day(2),
+            "temperature", "1.35", "103.82", _day(1), _day(2),
             "33.5", "above", 3 * 10**17, 3 * GEN,
         ],
     ).transact(value=3 * GEN, wait_interval=10000, wait_retries=15)

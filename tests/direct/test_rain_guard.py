@@ -15,8 +15,8 @@ from tests.direct.conftest import (
 )
 
 # Settlement is eligible the day after END_DATE + 1h buffer (see contract).
-# RG_END_DATE is 2030-01-05, so eligibility is 2030-01-06T01:00:00Z.
-SETTLE_ELIGIBLE_ISO = "2030-01-06T01:00:00Z"
+# RG_END_DATE is 2030-01-06, so eligibility is 2030-01-07T01:00:00Z.
+SETTLE_ELIGIBLE_ISO = "2030-01-07T01:00:00Z"
 SETTLE_ELIGIBLE_TS = iso_to_ts(SETTLE_ELIGIBLE_ISO)
 
 
@@ -197,18 +197,41 @@ def test_create_bad_dates_reverts(direct_vm, direct_deploy, direct_alice):
 
 
 def test_create_past_window_reverts(direct_vm, direct_deploy, direct_alice):
-    """A window that already ended is dead on arrival — it could never be
-    bought (the outcome is knowable), so creation rejects it outright."""
+    """A window that has already begun is dead on arrival — the weather is
+    already happening, so creation rejects it outright."""
     contract = direct_deploy("contracts/rain_guard.py")
     # Pin block time to a known instant AFTER the deploy import, so the
     # contract's _now() is deterministic regardless of wall-clock time.
     set_time("2030-01-10T00:00:00Z")
     direct_vm.sender = direct_alice
     direct_vm.value = 200
-    # 2030-01-01..2030-01-05 ended well before pinned now (2030-01-10).
-    with direct_vm.expect_revert("end_date must be today or later"):
+    # 2030-01-01..2030-01-05 began well before pinned now (2030-01-10).
+    with direct_vm.expect_revert("coverage must not have begun yet"):
         contract.create_policy(
             "rainfall", "-6.2", "106.8", "2030-01-01", "2030-01-05",
+            "2.0", "below", 100, 200,
+        )
+    direct_vm.value = 0
+
+
+def test_create_closes_at_the_moment_coverage_begins(
+    direct_vm, direct_deploy, direct_alice
+):
+    """Creation is allowed in the final second before the window opens and
+    reverts the instant it opens."""
+    contract = direct_deploy("contracts/rain_guard.py")
+    # Window starts 2030-01-02T00:00:00Z. At 23:59:59 on 01-01 creation is
+    # still allowed...
+    set_time("2030-01-01T23:59:59Z")
+    pid = create_policy(contract, direct_vm, direct_alice)
+    assert contract.get_policy(pid)["status"] == "OPEN"
+    # ...and at 00:00:00 on 01-02 it reverts: coverage has begun.
+    set_time("2030-01-02T00:00:00Z")
+    direct_vm.sender = direct_alice
+    direct_vm.value = 200
+    with direct_vm.expect_revert("coverage must not have begun yet"):
+        contract.create_policy(
+            "rainfall", "-6.2", "106.8", RG_START_DATE, RG_END_DATE,
             "2.0", "below", 100, 200,
         )
     direct_vm.value = 0
@@ -288,31 +311,32 @@ def test_buy_twice_reverts(
     direct_vm.value = 0
 
 
-def test_buy_on_final_second_of_window_still_allowed(
+def test_buy_closes_the_moment_coverage_begins(
     direct_vm, direct_deploy, direct_alice, direct_bob
 ):
-    """Buying closes at midnight AFTER the last covered day, not before it: a
-    buyer may still take coverage on the window's final second, because the
-    outcome is not knowable until that day is over."""
+    """Buying closes when the coverage window OPENS: a buyer may still take
+    coverage in the final second before the window starts, and one second
+    later — the moment the weather begins — the same policy can no longer be
+    bought."""
     contract = direct_deploy("contracts/rain_guard.py")
     pid = create_policy(contract, direct_vm, direct_alice)
+    pid2 = create_policy(contract, direct_vm, direct_alice)
 
-    # 2030-01-05T23:59:59Z — the last second of the coverage window's final
-    # day (window is 2030-01-01..2030-01-05). Buying must still succeed.
-    set_time("2030-01-05T23:59:59Z")
+    # 2030-01-01T23:59:59Z — the last second before the coverage window opens
+    # on 2030-01-02T00:00:00Z. Buying must still succeed.
+    set_time("2030-01-01T23:59:59Z")
     direct_vm.sender = direct_bob
     direct_vm.value = 100
     contract.buy_policy(pid)
     direct_vm.value = 0
     assert contract.get_policy(pid)["status"] == "ACTIVE"
 
-    # One second later the window is over and the outcome is knowable:
-    # the same policy can no longer be bought.
-    set_time("2030-01-06T00:00:00Z")
-    pid2 = create_policy(contract, direct_vm, direct_alice)
+    # One second later the window has begun and the weather is happening:
+    # the second policy can no longer be bought.
+    set_time("2030-01-02T00:00:00Z")
     direct_vm.sender = direct_bob
     direct_vm.value = 100
-    with direct_vm.expect_revert("coverage window has ended"):
+    with direct_vm.expect_revert("coverage has already begun"):
         contract.buy_policy(pid2)
     direct_vm.value = 0
 
@@ -330,8 +354,8 @@ def test_trigger_equality_never_pays(
         metric="rainfall", threshold="1.5", condition="below",
     )
     # Max mock temperature is exactly 31.5; an "above 31.5" heatwave MISSES.
-    # Both policies are created while the window is still live, then both
-    # settle once it ends.
+    # Both policies are created before the window opens, then both settle
+    # once it ends.
     pid2 = funded_policy(
         contract, direct_vm, direct_alice, direct_bob,
         metric="temperature", threshold="31.5", condition="above",
@@ -344,21 +368,21 @@ def test_trigger_equality_never_pays(
     assert contract.get_policy(pid2)["status"] == "EXPIRED"
 
 
-def test_buy_after_window_end_reverts_and_never_settles(
+def test_buy_after_coverage_begins_reverts_and_never_settles(
     direct_vm, direct_deploy, direct_alice, direct_bob
 ):
-    """A stale OPEN policy is frozen at the end of its coverage window: it can
-    no longer be bought (the outcome is already knowable from public weather
-    data), so it can never be bought and immediately settled. The insurer's
-    only way out is cancel_policy."""
+    """A stale OPEN policy is frozen the moment its coverage window opens: it
+    can no longer be bought (the weather is already happening, so the outcome
+    is partly knowable), meaning it can never be bought and immediately
+    settled. The insurer's only way out is cancel_policy."""
     contract = direct_deploy("contracts/rain_guard.py")
     pid = create_policy(contract, direct_vm, direct_alice)
 
-    # Well after RG_END_DATE (2030-01-05): the window is over.
+    # Well after RG_START_DATE (2030-01-02): the coverage has begun.
     set_time("2030-01-10T00:00:00Z")
     direct_vm.sender = direct_bob
     direct_vm.value = 100
-    with direct_vm.expect_revert("coverage window has ended"):
+    with direct_vm.expect_revert("coverage has already begun"):
         contract.buy_policy(pid)
     direct_vm.value = 0
 
@@ -420,7 +444,8 @@ def test_settle_before_eligible_reverts(
     contract = direct_deploy("contracts/rain_guard.py")
     pid = funded_policy(contract, direct_vm, direct_alice, direct_bob)
 
-    # Block time is within the coverage window (base is 2030-01-01).
+    # Block time (base 2030-01-01) is well before the window even opens, so
+    # settlement is far from eligible.
     mock_weather(direct_vm)
     with direct_vm.expect_revert("coverage window has not ended yet"):
         contract.settle_policy(pid)
@@ -475,9 +500,11 @@ def test_failed_settlement_stays_active_then_retry(
     mock_weather(direct_vm)
     with direct_vm.expect_revert("settlement was just attempted"):
         contract.settle_policy(pid)
+    direct_vm.clear_mocks()
 
-    # After the cooldown the retry succeeds.
+    # After the cooldown the retry succeeds on the correct archive.
     set_time("2030-01-08T00:05:00Z")
+    mock_weather(direct_vm)
     contract.settle_policy(pid)
     assert contract.get_policy(pid)["status"] == "PAID"
     assert contract.get_config()["escrow_locked"] == 0
@@ -518,15 +545,185 @@ def test_retry_limit_then_stale_close_refunds_both(
     assert contract.get_config()["escrow_locked"] == 0
 
 
-def test_stale_close_before_stale_window_reverts(
+def test_stale_close_requires_exhausted_retries_and_stale_window(
+    direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie
+):
+    """Stale closure is gated TWICE: the retry path must be genuinely
+    exhausted (MAX_SETTLE_ATTEMPTS recorded failures) AND the stale window
+    must have passed. A policy with no recorded settle attempt cannot be
+    closed stale even after its settle-eligible time; one that exhausted its
+    retries still cannot be closed before the stale window passes."""
+    contract = direct_deploy("contracts/rain_guard.py")
+    pid = funded_policy(contract, direct_vm, direct_alice, direct_bob)
+
+    # Settlement is eligible but no attempt is recorded yet: stale closure
+    # must revert — the retry path has not been exhausted.
+    set_time(SETTLE_ELIGIBLE_ISO)
+    with direct_vm.expect_revert("settlement retries not exhausted"):
+        contract.close_stale_policy(pid)
+
+    # Exhaust the retry path: 5 failed settle attempts (past cooldown each).
+    for i in range(5):
+        direct_vm.mock_web(
+            r".*archive-api\.open-meteo\.com.*",
+            {"status": 200, "body": "not json at all"},
+        )
+        contract.settle_policy(pid)
+        direct_vm.clear_mocks()
+        set_time(f"2030-01-08T00:{5 * (i + 1):02d}:00Z")
+    p = contract.get_policy(pid)
+    assert p["status"] == "ACTIVE"
+    assert p["attempts"] == 5
+
+    # Attempts exhausted but the stale window (eligible + 7d = 2030-01-14
+    # 01:00) has not passed yet: still gated.
+    with direct_vm.expect_revert("policy is not stale yet"):
+        contract.close_stale_policy(pid)
+
+    # Past the stale window with retries exhausted: anyone may close it.
+    set_time("2030-01-15T01:00:00Z")
+    direct_vm.sender = direct_charlie
+    contract.close_stale_policy(pid)
+    assert contract.get_policy(pid)["status"] == "REFUNDED"
+    assert contract.get_config()["escrow_locked"] == 0
+
+
+# ------------------------------------------------- settlement source validation
+# Settlement must only move money on the UTC archive for the policy's exact
+# coordinates and exact covered dates. Each test below serves a wrong-but-
+# plausible response, asserts the policy fails CLOSED (ACTIVE, escrow
+# untouched, one attempt recorded), then proves a retry against the correct
+# archive settles normally.
+
+
+def _source_rejected_fails_closed(contract, vm, pid):
+    """Shared assertions after a settlement that rejected the source."""
+    p = contract.get_policy(pid)
+    assert p["status"] == "ACTIVE"  # fail closed
+    assert p["attempts"] == 1
+    assert p["measured"] == ""
+    assert contract.get_config()["escrow_locked"] == 300
+    # A retry against the correct archive settles the policy.
+    vm.clear_mocks()
+    set_time("2030-01-08T00:05:00Z")  # past the settle cooldown
+    mock_weather(vm)
+    contract.settle_policy(pid)
+    assert contract.get_policy(pid)["status"] == "PAID"
+
+
+def test_settlement_rejects_wrong_coordinates(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    """The archive echoes the coordinate it was queried for; a response from a
+    different grid point (here northern-hemisphere Jakarta) is rejected."""
+    contract = direct_deploy("contracts/rain_guard.py")
+    pid = funded_policy(contract, direct_vm, direct_alice, direct_bob)
+
+    set_time(SETTLE_ELIGIBLE_ISO)
+    mock_weather(direct_vm, lat="6.2")  # policy is -6.2
+    contract.settle_policy(pid)
+    _source_rejected_fails_closed(contract, direct_vm, pid)
+
+
+def test_settlement_rejects_wrong_longitude(
     direct_vm, direct_deploy, direct_alice, direct_bob
 ):
     contract = direct_deploy("contracts/rain_guard.py")
     pid = funded_policy(contract, direct_vm, direct_alice, direct_bob)
 
     set_time(SETTLE_ELIGIBLE_ISO)
-    with direct_vm.expect_revert("policy is not stale yet"):
-        contract.close_stale_policy(pid)
+    mock_weather(direct_vm, lon="1.0")  # policy is 106.8
+    contract.settle_policy(pid)
+    _source_rejected_fails_closed(contract, direct_vm, pid)
+
+
+def test_settlement_rejects_wrong_timezone(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    """The archive must be the UTC series: a local-timezone series shifts the
+    calendar days and must never settle a policy."""
+    contract = direct_deploy("contracts/rain_guard.py")
+    pid = funded_policy(contract, direct_vm, direct_alice, direct_bob)
+
+    set_time(SETTLE_ELIGIBLE_ISO)
+    mock_weather(direct_vm, tz="Asia/Jakarta")
+    contract.settle_policy(pid)
+    _source_rejected_fails_closed(contract, direct_vm, pid)
+
+
+def test_settlement_rejects_wrong_dates(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    """The returned dates must be the policy's exact covered days. A series
+    shifted by one day (2030-01-03..07 instead of 01-02..06) is rejected even
+    though the row count and values are identical."""
+    contract = direct_deploy("contracts/rain_guard.py")
+    pid = funded_policy(contract, direct_vm, direct_alice, direct_bob)
+
+    set_time(SETTLE_ELIGIBLE_ISO)
+    mock_weather(
+        direct_vm, days=[f"2030-01-{d:02d}" for d in range(3, 8)],
+    )
+    contract.settle_policy(pid)
+    _source_rejected_fails_closed(contract, direct_vm, pid)
+
+
+def test_settlement_rejects_wrong_row_count(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    """Row count must equal the number of covered days: a truncated series
+    (4 rows for a 5-day window) is rejected."""
+    contract = direct_deploy("contracts/rain_guard.py")
+    pid = funded_policy(contract, direct_vm, direct_alice, direct_bob)
+
+    set_time(SETTLE_ELIGIBLE_ISO)
+    mock_weather(
+        direct_vm, days=[f"2030-01-{d:02d}" for d in range(2, 6)],
+    )
+    contract.settle_policy(pid)
+    _source_rejected_fails_closed(contract, direct_vm, pid)
+
+
+def test_settlement_rejects_incomplete_metric_data(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    """The metric column must cover every covered day with a real number: a
+    precipitation series with only 3 of the 5 days is rejected."""
+    contract = direct_deploy("contracts/rain_guard.py")
+    pid = funded_policy(contract, direct_vm, direct_alice, direct_bob)
+
+    set_time(SETTLE_ELIGIBLE_ISO)
+    mock_weather(direct_vm, precip=[0.3, 0.2, 0.5])
+    contract.settle_policy(pid)
+    _source_rejected_fails_closed(contract, direct_vm, pid)
+
+
+def test_settlement_rejects_missing_metric_column(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    """A response without the metric column at all (here temperature on a
+    rainfall policy) is rejected."""
+    contract = direct_deploy("contracts/rain_guard.py")
+    pid = funded_policy(contract, direct_vm, direct_alice, direct_bob)
+
+    set_time(SETTLE_ELIGIBLE_ISO)
+    body = json.dumps(
+        {
+            "latitude": -6.2,
+            "longitude": 106.8,
+            "timezone": "UTC",
+            "daily": {
+                "time": [f"2030-01-{d:02d}" for d in range(2, 7)],
+                "precipitation_sum": None,
+                "temperature_2m_max": [29.0, 30.1, 31.5, 28.4, 30.2],
+            },
+        }
+    )
+    direct_vm.mock_web(
+        r".*archive-api\.open-meteo\.com.*", {"status": 200, "body": body}
+    )
+    contract.settle_policy(pid)
+    _source_rejected_fails_closed(contract, direct_vm, pid)
 
 
 # ---------------------------------------------------------------- escrow accounting
@@ -572,7 +769,7 @@ def test_views(direct_vm, direct_deploy, direct_alice, direct_bob):
     assert p["premium"] == 100
     assert p["payout"] == 200
     assert p["status"] == "ACTIVE"
-    # settle-eligible: end 2030-01-05 + 1 day + 1h
+    # settle-eligible: end 2030-01-06 + 1 day + 1h = 2030-01-07T01:00:00Z
     assert p["settle_eligible_at"] == SETTLE_ELIGIBLE_TS
 
     assert contract.list_policies(0, 10)[0]["id"] == pid

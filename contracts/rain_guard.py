@@ -26,10 +26,22 @@ looping.
 
 State machine: OPEN -> ACTIVE -> PAID | EXPIRED | CANCELLED | REFUNDED.
 
-Buying closes when the coverage window closes: once the window is over, the
-outcome is already knowable from public weather data, so a stale OPEN policy
-can never be bought and immediately settled. An insurer whose policy finds no
-buyer before the window ends can only cancel and recover the payout.
+Creation and buying close when the coverage window OPENS: a policy may only
+be created, and only be bought, BEFORE the window begins. Once the weather is
+happening the outcome is partly knowable, so an OPEN policy can never be
+bought mid-window and settled on a known outcome. An insurer whose policy
+finds no buyer before the window opens can only cancel and recover the
+payout.
+
+Settlement only moves money on validated archive data. The response must be
+the UTC archive for the policy's exact coordinates and exact covered dates:
+the row count must equal the number of covered days, every returned date must
+match, and the metric column must be complete and numeric. Any mismatch fails
+closed and keeps the policy ACTIVE for a retry.
+
+A policy consensus can never settle is unwound as stale, but only AFTER the
+retry path is genuinely exhausted: at least MAX_SETTLE_ATTEMPTS settlement
+attempts must have run and failed, and the stale window must have passed.
 """
 from genlayer import *
 from dataclasses import dataclass
@@ -61,6 +73,9 @@ SETTLE_AFTER_END_SECONDS = 3600
 # policy ACTIVE; re-runs are throttled and capped like any consensus step.
 SETTLE_COOLDOWN_SECONDS = 300
 MAX_SETTLE_ATTEMPTS = 5
+# Open-Meteo echoes the requested coordinate rounded to two decimals, so a
+# response is the policy's grid point when it is within this tolerance.
+SOURCE_COORD_TOLERANCE = 0.006
 # If consensus can never settle, anyone may close the policy after this long
 # past its settle-eligible time: buyer gets the premium back, insurer gets the
 # payout back. Nobody profits from a network failure.
@@ -265,10 +280,13 @@ class RainGuard(gl.Contract):
             raise gl.vm.UserError("end_date must not be before start_date")
         if end_ts - start_ts > (MAX_WINDOW_DAYS - 1) * SECONDS_PER_DAY:
             raise gl.vm.UserError(f"window must be {MAX_WINDOW_DAYS} days or less")
-        # The window must still be live or upcoming: a fully-ended window can
-        # never be bought (see buy_policy), so it would be dead on arrival.
-        if self._date_to_ts(end_date) + SECONDS_PER_DAY < self._now():
-            raise gl.vm.UserError("end_date must be today or later")
+        # Coverage may only be created before it begins: once the window has
+        # started the weather is already happening, so a policy created now
+        # could only ever be bought against a partially-known outcome.
+        if self._now() >= start_ts:
+            raise gl.vm.UserError(
+                "coverage must not have begun yet — policies can only be created before the window opens"
+            )
         threshold = _strip_control_chars(threshold).strip()
         if not _is_decimal(threshold, MAX_THRESHOLD_CHARS, 0.0, 100000.0):
             raise gl.vm.UserError("threshold must be a positive decimal")
@@ -319,13 +337,13 @@ class RainGuard(gl.Contract):
         if p.status != OPEN:
             raise gl.vm.UserError("policy is not open for purchase")
         now = self._now()
-        # Buying is allowed through the last day of the coverage window and no
-        # later: once the window is over, the outcome is already knowable, so
-        # a stale OPEN policy can never be bought and immediately settled.
-        # The insurer's only way out then is cancel_policy.
-        if now >= self._date_to_ts(p.end_date) + SECONDS_PER_DAY:
+        # Buying closes when the coverage window opens: once it has begun the
+        # weather is already happening, so a stale OPEN policy can never be
+        # bought and immediately settled. The insurer's only way out then is
+        # cancel_policy.
+        if now >= self._date_to_ts(p.start_date):
             raise gl.vm.UserError(
-                "coverage window has ended — a policy can no longer be bought"
+                "coverage has already begun — buying is only allowed before the window opens"
             )
         buyer = gl.message.sender_address
         if p.insurer == buyer:
@@ -391,13 +409,20 @@ class RainGuard(gl.Contract):
         """Unwind a policy consensus can never settle — both sides refunded.
 
         An ACTIVE policy pins its escrow forever if consensus never produced
-        a settlement and retries are exhausted. After the stale window anyone
-        may close it: the buyer gets the premium back, the insurer gets the
-        payout back. The network failed to settle, so nobody profits.
+        a settlement and retries are exhausted. Stale closure is only
+        available AFTER the retry path has genuinely failed: MAX_SETTLE_ATTEMPTS
+        settlement attempts must be recorded, and the stale window must have
+        passed. Then anyone may close it: the buyer gets the premium back, the
+        insurer gets the payout back. The network failed to settle, so nobody
+        profits.
         """
         p = self._policy_or_revert(int(policy_id))
         if p.status != ACTIVE:
             raise gl.vm.UserError("policy is not active")
+        if int(p.attempts) < MAX_SETTLE_ATTEMPTS:
+            raise gl.vm.UserError(
+                "settlement retries not exhausted — failed settle attempts must precede stale closure"
+            )
         if self._now() < self._settle_eligible_at(p) + STALE_AFTER_SETTLE_SECONDS:
             raise gl.vm.UserError("policy is not stale yet")
         p.status = REFUNDED
@@ -426,9 +451,13 @@ class RainGuard(gl.Contract):
         )
 
     def _run_settlement(self, policy_id: int) -> None:
-        """Fetch the archive, compute the trigger, and move the money.
+        """Fetch the archive, validate its source, and move the money.
 
-        Fail closed: unusable output leaves the policy ACTIVE and emits
+        The response is only usable when it is the UTC archive for the
+        policy's own coordinates and exact covered dates: row count equals the
+        number of covered days, each returned date matches the expected
+        sequence, and the metric column is complete and numeric. Fail closed:
+        any mismatch or unusable output leaves the policy ACTIVE and emits
         SettlementFailed; it never pays out on a guess.
         """
         p = self._policy_or_revert(policy_id)
@@ -438,24 +467,64 @@ class RainGuard(gl.Contract):
         condition = p.condition
         threshold = float(p.threshold)
         url = self._build_archive_url(p)
+        start_dt = datetime.date.fromisoformat(p.start_date)
+        end_dt = datetime.date.fromisoformat(p.end_date)
+        expected_days = (end_dt - start_dt).days + 1
+        expected_dates = [
+            (start_dt + datetime.timedelta(days=i)).isoformat()
+            for i in range(expected_days)
+        ]
 
         def do_settle() -> str:
             try:
                 text = gl.nondet.web.render(url, mode="text")
                 data = json.loads(text)
+                # --- source validation. Only the UTC archive for the policy's
+                # own place and exact covered dates may settle it; anything
+                # else fails closed so a wrong or malicious response never
+                # moves money.
+                if data.get("timezone") != "UTC":
+                    return json.dumps({"error": "source mismatch"})
+                try:
+                    resp_lat = float(data.get("latitude"))
+                    resp_lon = float(data.get("longitude"))
+                except (TypeError, ValueError):
+                    return json.dumps({"error": "source mismatch"})
+                if (
+                    abs(resp_lat - float(p.lat)) > SOURCE_COORD_TOLERANCE
+                    or abs(resp_lon - float(p.lon)) > SOURCE_COORD_TOLERANCE
+                ):
+                    return json.dumps({"error": "source mismatch"})
                 daily = data.get("daily") or {}
                 time_rows = daily.get("time") or []
+                # Exact returned dates AND row count: every covered day must be
+                # present, in order, with no extras and no gaps.
+                if list(time_rows) != expected_dates:
+                    return json.dumps(
+                        {"error": "archive rows do not match the covered window"}
+                    )
                 if metric == RAINFALL:
-                    raw = daily.get("precipitation_sum") or []
+                    raw = daily.get("precipitation_sum")
                 else:
-                    raw = daily.get("temperature_2m_max") or []
-                if not time_rows or len(raw) < len(time_rows):
-                    return json.dumps({"error": "incomplete weather data"})
-                values = [
-                    float(v) for v in raw[: len(time_rows)] if v is not None
-                ]
-                if len(values) < len(time_rows):
-                    return json.dumps({"error": "incomplete weather data"})
+                    raw = daily.get("temperature_2m_max")
+                # The metric column must exist and cover every day with a real
+                # number; a gap or non-numeric cell makes the data unusable.
+                if raw is None or len(raw) != expected_days:
+                    return json.dumps(
+                        {"error": "metric data does not cover the window"}
+                    )
+                values: list[float] = []
+                for v in raw:
+                    if v is None:
+                        return json.dumps(
+                            {"error": "metric data does not cover the window"}
+                        )
+                    try:
+                        values.append(float(v))
+                    except (TypeError, ValueError):
+                        return json.dumps(
+                            {"error": "metric data does not cover the window"}
+                        )
                 measured = sum(values) if metric == RAINFALL else max(values)
                 triggered = (
                     measured < threshold if condition == BELOW else measured > threshold

@@ -16,11 +16,12 @@ interface PolicyCardProps {
   onCloseStale: (policy: Policy) => void;
 }
 
-/** Unix ts when buying closes: end of end_date's day (midnight after it). */
+/** Unix ts when buying closes: the moment the coverage window OPENS
+ * (midnight UTC of start_date). Coverage can only be bought before it
+ * begins — once the weather is happening the policy is frozen. */
 export function buyClosesAt(p: Policy): number {
-  const [y, m, d] = p.end_date.split("-").map(Number);
-  const dayStart = Date.UTC(y, m - 1, d) / 1000;
-  return dayStart + 86400;
+  const [y, m, d] = p.start_date.split("-").map(Number);
+  return Date.UTC(y, m - 1, d) / 1000;
 }
 
 /** Human-readable trigger, e.g. "rainfall under 30mm over the window". */
@@ -57,6 +58,8 @@ export default function PolicyCard({
   const isBuyer = !!me && p.buyer && me.toLowerCase() === p.buyer.toLowerCase();
   const canSettle = p.status === "ACTIVE" && now >= p.settle_eligible_at;
   const canCloseStale = p.status === "ACTIVE" && now >= p.stale_at;
+  // Coverage is only purchasable BEFORE the window opens (contract rule).
+  const canBuy = p.status === "OPEN" && !isInsurer && now < buyClosesAt(p);
   const windowLabel =
     p.start_date === p.end_date ? p.end_date : `${p.start_date} to ${p.end_date}`;
 
@@ -181,18 +184,19 @@ export default function PolicyCard({
             Cancel policy
           </button>
         )}
-        {p.status === "OPEN" && !isInsurer && (
-          <button
-            className="primary"
-            disabled={busy || !me}
-            onClick={() => onBuy(p)}
-          >
+        {canBuy && me && (
+          <button className="primary" disabled={busy} onClick={() => onBuy(p)}>
             Take coverage for {formatGen(p.premium)}
           </button>
         )}
-        {p.status === "OPEN" && !isInsurer && !me && (
+        {canBuy && !me && (
           <span className="muted" style={{ fontSize: "0.85rem" }}>
             Connect a wallet to buy coverage
+          </span>
+        )}
+        {!canBuy && p.status === "OPEN" && !isInsurer && (
+          <span className="muted" style={{ fontSize: "0.85rem" }}>
+            Coverage already began — buying closed when the window opened
           </span>
         )}
         {canSettle && (

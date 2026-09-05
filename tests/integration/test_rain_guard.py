@@ -5,10 +5,12 @@ Run with: gltest --network studionet tests/integration/test_rain_guard.py -v -s
 These exercise the real consensus pipeline: an insurer funds a policy's payout
 escrow, a second wallet buys the coverage by paying the premium, and the
 contract's views (including Address-typed personal lists) reflect the state
-on-chain. Settlement itself is time-gated — it only runs after the coverage
-window has fully ended plus an archive buffer, so a freshly created policy can
-not be settled mid-window; that gate is asserted here. The deterministic
-settlement math (strict_eq over the Open-Meteo archive response) is covered
+on-chain. Windows always start in the future, because the contract only
+allows creation and purchase BEFORE the coverage begins. Settlement itself is
+also time-gated — it only runs after the coverage window has fully ended plus
+an archive buffer — so a freshly created policy can not be settled
+mid-window; that gate is asserted here. The deterministic settlement math
+(strict_eq over the validated Open-Meteo archive response) is covered
 exhaustively by the fast direct-mode tests, and the live demo policies settle
 with real validator consensus once their windows end.
 """
@@ -59,10 +61,12 @@ def test_create_buy_reach_consensus_and_settlement_is_gated():
     insurer, buyer = accounts[0], accounts[1]
     contract = _deploy(account=insurer)
 
-    # Insurer funds a rainfall policy covering today..tomorrow.
+    # Insurer funds a rainfall policy covering tomorrow..the day after. The
+    # window starts in the future because the contract only allows creation
+    # before coverage begins.
     receipt = contract.create_policy(
         args=[
-            "rainfall", LAT, LON, _today_str(), _in_days(1),
+            "rainfall", LAT, LON, _in_days(1), _in_days(2),
             THRESHOLD, "below", PREMIUM, PAYOUT,
         ],
     ).transact(value=PAYOUT, wait_interval=10000, wait_retries=15)
@@ -120,17 +124,18 @@ def test_views_reflect_policy_state_and_typed_addresses():
     insurer = accounts[2]
     contract = _deploy(account=insurer)
 
-    # Two policies so personal lists and pagination can be observed.
+    # Two policies so personal lists and pagination can be observed. Both
+    # windows start in the future (creation must precede coverage).
     receipt = contract.create_policy(
         args=[
-            "rainfall", LAT, LON, _today_str(), _in_days(1),
+            "rainfall", LAT, LON, _in_days(1), _in_days(2),
             THRESHOLD, "below", 50, 150,
         ],
     ).transact(value=150, wait_interval=10000, wait_retries=15)
     assert tx_execution_succeeded(receipt)
     receipt = contract.create_policy(
         args=[
-            "temperature", "1.35", "103.82", _today_str(), _in_days(2),
+            "temperature", "1.35", "103.82", _in_days(2), _in_days(3),
             "35.0", "above", 80, 240,
         ],
     ).transact(value=240, wait_interval=10000, wait_retries=15)
@@ -157,3 +162,31 @@ def test_views_reflect_policy_state_and_typed_addresses():
     assert stats["total_policies"] == 2
     assert stats["open"] == 2
     assert stats["escrow_locked"] == 150 + 240
+
+
+@pytest.mark.integration
+def test_creation_once_coverage_begins_reverts():
+    """The contract refuses to create coverage whose window has already
+    started: a window beginning today is dead on arrival (the weather is
+    already happening), so the create transaction must revert on-chain."""
+    accounts = get_accounts()
+    insurer = accounts[2]  # fresh per-test deploy; accounts are reusable
+    contract = _deploy(account=insurer)
+
+    reverted = False
+    try:
+        receipt = contract.create_policy(
+            args=[
+                "rainfall", LAT, LON, _today_str(), _in_days(1),
+                THRESHOLD, "below", PREMIUM, PAYOUT,
+            ],
+        ).transact(value=PAYOUT, wait_interval=10000, wait_retries=10)
+        reverted = not tx_execution_succeeded(receipt)
+    except Exception as e:
+        reverted = "coverage must not have begun yet" in str(e)
+    assert reverted, "create_policy should have reverted for a begun window"
+
+    # Nothing was created: the contract is still empty and holds no escrow.
+    stats = contract.get_stats(args=[]).call()
+    assert stats["total_policies"] == 0
+    assert stats["escrow_locked"] == 0
